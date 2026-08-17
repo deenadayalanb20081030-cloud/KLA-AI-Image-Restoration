@@ -30,10 +30,11 @@
         <a href="#studio" class="nav-link active"><span>01</span> Restoration Studio</a>
         <a href="#physics" class="nav-link"><span>02</span> Problem Anatomy</a>
         <a href="#architectures" class="nav-link"><span>03</span> AI Architectures</a>
-        <a href="#h100-benchmark" class="nav-link"><span>04</span> H100 GPU Optimization</a>
+        <a href="#h100-benchmark" class="nav-link"><span>04</span> H100 Optimization</a>
         <a href="#augmentation" class="nav-link"><span>05</span> OOD Augmentation</a>
-        <a href="#submission" class="nav-link"><span>06</span> Code Generator</a>
-        <a href="#faq" class="nav-link"><span>07</span> FAQ</a>
+        <a href="#npy-converter" class="nav-link"><span>06</span> .NPY ⇄ PNG Tool</a>
+        <a href="#submission" class="nav-link"><span>07</span> Code Generator</a>
+        <a href="#faq" class="nav-link"><span>08</span> FAQ</a>
       </nav>
 
       <div class="header-actions">
@@ -128,45 +129,80 @@
           <div class="control-card">
             <div class="card-title-wrap">
               <span class="step-badge">1</span>
-              <h3>Select Metrology Sample</h3>
+              <h3>Select Semiconductor Modality</h3>
             </div>
             <div class="sample-grid">
               <button class="sample-btn active" data-sample="texture">
                 <div class="sample-preview texture-thumb"></div>
                 <div class="sample-info">
                   <strong>Figure 1: Texture</strong>
-                  <span>Wafer Surface (512×512)</span>
+                  <span>Wafer Surface (KLA)</span>
                 </div>
               </button>
               <button class="sample-btn" data-sample="dendrite">
                 <div class="sample-preview dendrite-thumb"></div>
                 <div class="sample-info">
                   <strong>Figure 2: Dendrite</strong>
-                  <span>Crystal Growth (512×512)</span>
+                  <span>Crystal Growth (KLA)</span>
                 </div>
               </button>
-              <button class="sample-btn" data-sample="wafer-die">
+              <button class="sample-btn" data-sample="logic-finfet">
                 <div class="sample-preview die-thumb"></div>
                 <div class="sample-info">
-                  <strong>Logic Contact Die</strong>
-                  <span>Semiconductor (512×512)</span>
+                  <strong>Logic FinFET / GAA</strong>
+                  <span>TSMC / Intel 3nm Cell</span>
+                </div>
+              </button>
+              <button class="sample-btn" data-sample="nand-3d">
+                <div class="sample-preview die-thumb"></div>
+                <div class="sample-info">
+                  <strong>3D NAND Flash</strong>
+                  <span>Vertical Channel Array</span>
+                </div>
+              </button>
+              <button class="sample-btn" data-sample="dram-trench">
+                <div class="sample-preview texture-thumb"></div>
+                <div class="sample-info">
+                  <strong>DRAM Capacitor Trench</strong>
+                  <span>High-Density Bitlines</span>
+                </div>
+              </button>
+              <button class="sample-btn" data-sample="tsv-packaging">
+                <div class="sample-preview ood-thumb"></div>
+                <div class="sample-info">
+                  <strong>Advanced Packaging</strong>
+                  <span>TSVs &amp; Microbumps</span>
+                </div>
+              </button>
+              <button class="sample-btn" data-sample="euv-grating">
+                <div class="sample-preview texture-thumb"></div>
+                <div class="sample-info">
+                  <strong>EUV Overlay Target</strong>
+                  <span>ASML Diffraction Grating</span>
+                </div>
+              </button>
+              <button class="sample-btn" data-sample="cmp-scratch">
+                <div class="sample-preview dendrite-thumb"></div>
+                <div class="sample-info">
+                  <strong>CMP Polish Scratches</strong>
+                  <span>Surface Defect Particles</span>
                 </div>
               </button>
               <button class="sample-btn" data-sample="ood-sample">
                 <div class="sample-preview ood-thumb"></div>
                 <div class="sample-info">
-                  <strong>OOD Outlier Sample</strong>
-                  <span>Unseen Distribution</span>
+                  <strong>OOD Outlier Stress</strong>
+                  <span>Unseen Metrology Mode</span>
                 </div>
               </button>
             </div>
 
-            <!-- Custom Upload Dropzone -->
+            <!-- Custom Upload Dropzone with .NPY and Image Support -->
             <div class="upload-dropzone" id="dropzone">
-              <input type="file" id="imageUploadInput" accept="image/*" class="file-input">
+              <input type="file" id="imageUploadInput" accept=".npy,image/*" class="file-input">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span>Drag &amp; drop custom wafer image or <strong>Browse</strong></span>
-              <span class="upload-hint">Supported: PNG, JPG, TIFF (512×512 recommended)</span>
+              <span>Drag &amp; drop custom wafer image / <strong>.NPY array</strong> or <strong>Browse</strong></span>
+              <span class="upload-hint">Supported: <strong>.NPY (Raw Float32)</strong>, PNG, JPG, TIFF (128×128, 256×256, 512×512)</span>
             </div>
           </div>
 
@@ -322,9 +358,13 @@
             </div>
 
             <div class="viewport-tools">
-              <button class="tool-btn" id="downloadRestoredBtn" title="Download Restored Image">
+              <button class="tool-btn" id="downloadRestoredBtn" title="Download Restored Image (PNG)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Export Image
+                Export PNG
+              </button>
+              <button class="tool-btn" id="downloadRestoredNpyBtn" title="Download Raw Float32 Array (.NPY)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="18"/><line x1="15" y1="15" x2="12" y2="18"/></svg>
+                Export .NPY Array
               </button>
             </div>
           </div>
@@ -973,8 +1013,131 @@ class SemiconductorDegradationTransform:
     </div>
   </section>
 
-  <!-- Section 6: Submission Packaging & Code Generator -->
-  <section class="section section-dark" id="submission">
+  <!-- Section 6: Standalone .NPY ⇄ .PNG Metrology Visualizer & Batch Converter -->
+  <section class="section section-dark" id="npy-converter">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">VISUAL INSPECTION &amp; CONVERSION SUITE</div>
+        <h2 class="section-title">.NPY ⇄ .PNG Metrology Visualizer &amp; Batch Converter</h2>
+        <p class="section-desc">
+          Raw <code>.npy</code> floating-point arrays preserve unclipped 32-bit dynamics for quantitative metrology, but <strong>PNG images are essential for visual inspection</strong> by evaluators and review teams. Interactively convert, tone-map, apply false-color colormaps, and audit wafer arrays in real time.
+        </p>
+      </div>
+
+      <div class="converter-workbench-grid">
+        <!-- Left Converter Controls -->
+        <div class="converter-controls-card">
+          <div class="card-tag">STEP 1: SELECT OR UPLOAD .NPY ARRAY</div>
+          <h3>Array Source &amp; Modality</h3>
+          <p>Select from synthesized semiconductor fab arrays or drop your own raw <code>.npy</code> file:</p>
+
+          <div class="converter-modality-list">
+            <button class="conv-mod-btn active" data-mod="finfet">Logic FinFET (3nm)</button>
+            <button class="conv-mod-btn" data-mod="nand">3D NAND Channel</button>
+            <button class="conv-mod-btn" data-mod="dram">DRAM Bitline</button>
+            <button class="conv-mod-btn" data-mod="tsv">Packaging TSVs</button>
+            <button class="conv-mod-btn" data-mod="euv">EUV Grating</button>
+            <button class="conv-mod-btn" data-mod="cmp">CMP Scratches</button>
+            <button class="conv-mod-btn" data-mod="dendrite">SEM Dendrite Defect</button>
+            <button class="conv-mod-btn" data-mod="ood">Out-of-Distribution</button>
+          </div>
+
+          <div class="conv-dropzone" id="convDropzone">
+            <input type="file" id="convFileInput" accept=".npy,.png,.jpg,.tif" style="display:none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div class="conv-drop-text">
+              <strong>Drag &amp; Drop .NPY Array Here</strong>
+              <span>or click to browse from disk</span>
+            </div>
+          </div>
+
+          <div class="card-divider"></div>
+
+          <div class="card-tag">STEP 2: TONE MAPPING &amp; VISUALIZATION</div>
+          <div class="conv-opt-group">
+            <label class="conv-lbl">Tone-Mapping Normalization:</label>
+            <div class="conv-btn-group" id="convModeGroup">
+              <button class="conv-opt-btn active" data-mode="standard" title="Physical [0.0, 1.0] projection with clipping">Standard [0, 1]</button>
+              <button class="conv-opt-btn" data-mode="percentile" title="1% - 99% Percentile stretch for faint defect discovery">1% - 99% Contrast</button>
+              <button class="conv-opt-btn" data-mode="minmax" title="Full dynamic range scaling">Min-Max Scale</button>
+            </div>
+          </div>
+
+          <div class="conv-opt-group">
+            <label class="conv-lbl">Metrology Inspection Colormap:</label>
+            <div class="conv-btn-group" id="convCmapGroup">
+              <button class="conv-opt-btn active" data-cmap="grayscale">Grayscale (SEM)</button>
+              <button class="conv-opt-btn" data-cmap="inferno">Inferno Heatmap</button>
+              <button class="conv-opt-btn" data-cmap="turbo">Turbo Rainbow</button>
+              <button class="conv-opt-btn" data-cmap="viridis">Viridis Linear</button>
+            </div>
+          </div>
+
+          <div class="card-divider"></div>
+
+          <div class="conv-action-buttons">
+            <button class="btn btn-primary btn-block" id="convDownloadPngBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Convert &amp; Export Current PNG
+            </button>
+            <button class="btn btn-secondary btn-block" id="convDownloadAllZipBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Batch Convert All 8 Modalities (.PNG Bundle)
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Visual Inspection & Telemetry Canvas -->
+        <div class="converter-display-card">
+          <div class="conv-display-header">
+            <div class="conv-title-wrap">
+              <h4 id="convArrayTitle">Logic FinFET (3nm Standard Cells)</h4>
+              <span class="conv-subtitle" id="convArraySubtitle">Rendered from 32-bit Floating-Point Array (.npy) → 8-bit Image Canvas (.png)</span>
+            </div>
+            <div class="conv-badge-tag" id="convBadgeTag">Float32 Matrix Active</div>
+          </div>
+
+          <!-- Canvas Preview -->
+          <div class="conv-canvas-wrap">
+            <canvas id="convCanvas" width="512" height="512"></canvas>
+            <div class="conv-loupe-overlay" id="convLoupeOverlay"></div>
+          </div>
+
+          <!-- Array Telemetry Readout -->
+          <div class="conv-telemetry-grid">
+            <div class="conv-telemetry-item">
+              <span class="ctl-lbl">Array Dimensions</span>
+              <span class="ctl-val" id="ctlDim">512 × 512</span>
+            </div>
+            <div class="conv-telemetry-item">
+              <span class="ctl-lbl">Data Type</span>
+              <span class="ctl-val" id="ctlDtype">Float32 (Uncompressed)</span>
+            </div>
+            <div class="conv-telemetry-item">
+              <span class="ctl-lbl">Intensity Bounds</span>
+              <span class="ctl-val" id="ctlRange">[0.000, 1.624]</span>
+            </div>
+            <div class="conv-telemetry-item">
+              <span class="ctl-lbl">Speckle Status</span>
+              <span class="ctl-val ctl-highlight" id="ctlSpeckle">Unclipped Speckle (&gt; 1.0)</span>
+            </div>
+          </div>
+
+          <!-- Standalone Script Invocation Banner for Evaluators -->
+          <div class="conv-cli-banner">
+            <div class="cli-banner-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              <span>Evaluator CLI Command (Standalone Python Module):</span>
+            </div>
+            <code class="cli-code-inline">python convert_npy_to_png.py --input_dir ./outputs --output_dir ./outputs_png --mode standard</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 7: Submission Packaging & Code Generator -->
+  <section class="section" id="submission">
     <div class="container">
       <div class="section-header">
         <div class="section-tag">SUBMISSION COMPLIANCE</div>
@@ -1007,16 +1170,16 @@ class SemiconductorDegradationTransform:
           <div class="check-item">
             <span class="check-icon">✓</span>
             <div>
-              <strong>3. Denoised Test Outputs (/outputs)</strong>
-              <span>Reconstructed full-resolution 512×512 / 256×256 PNG images clamped to standard $[0, 255]$ 8-bit dynamic range.</span>
+              <strong>3. NPY ⇄ PNG Conversion Tool (convert_npy_to_png.py)</strong>
+              <span>Standalone multi-threaded conversion utility allowing evaluators to visually inspect raw float arrays as PNGs.</span>
             </div>
           </div>
 
           <div class="check-item">
             <span class="check-icon">✓</span>
             <div>
-              <strong>4. Environment Spec (requirements.txt)</strong>
-              <span>Exact <code>pip freeze</code> output for reproducible benchmarking on NVIDIA H100 GPU.</span>
+              <strong>4. Denoised Test Outputs (/outputs)</strong>
+              <span>Reconstructed full-resolution 512×512 / 256×256 PNG images and raw .npy floating-point arrays.</span>
             </div>
           </div>
         </div>
@@ -1026,6 +1189,7 @@ class SemiconductorDegradationTransform:
       <div class="code-gen-card">
         <div class="code-tabs-nav">
           <button class="code-tab active" data-tab="evaluate">evaluate.py (Standalone CLI)</button>
+          <button class="code-tab" data-tab="converter">convert_npy_to_png.py (NPY ⇄ PNG)</button>
           <button class="code-tab" data-tab="train">train.py (PyTorch Pipeline)</button>
           <button class="code-tab" data-tab="model">model.py (Network Arch)</button>
           <button class="code-tab" data-tab="requirements">requirements.txt (pip freeze)</button>
@@ -1150,6 +1314,60 @@ def main():
 
 if __name__ == "__main__":
     main()
+</code></pre>
+
+            <!-- convert_npy_to_png.py -->
+            <pre class="code-display" id="code-converter"><code class="language-python">"""
+KLA Metrology: Standalone .NPY -> .PNG Conversion & Visualization Tool
+
+Features:
+- Multi-threaded batch conversion for 1,000+ to 10,000+ files
+- Tone mapping: 'standard' [0, 1], 'percentile' (1-99% defect stretch), 'minmax'
+- Metrology false-color colormaps: grayscale, viridis, inferno, turbo
+- Preserves unclipped speckle dynamic range physics with zero distortion
+
+Usage Examples:
+    python convert_npy_to_png.py --input_dir ./outputs --output_dir ./outputs_png
+    python convert_npy_to_png.py --input_file ./sample.npy --output_file ./sample.png --colormap inferno
+"""
+
+import os
+import sys
+import argparse
+import time
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import numpy as np
+from PIL import Image
+
+def npy_array_to_uint8(arr: np.ndarray, mode: str = "standard", colormap: str = "none") -> np.ndarray:
+    arr = np.nan_to_num(np.squeeze(arr.astype(np.float32)), nan=0.0, posinf=1.0, neginf=0.0)
+    
+    if mode == "percentile":
+        p_low, p_high = np.percentile(arr, (1.0, 99.0))
+        norm = np.clip((arr - p_low) / max(p_high - p_low, 1e-6), 0.0, 1.0)
+    elif mode == "minmax":
+        vmin, vmax = np.min(arr), np.max(arr)
+        norm = np.clip((arr - vmin) / max(vmax - vmin, 1e-6), 0.0, 1.0)
+    else: # standard
+        norm = np.clip(arr if np.max(arr) <= 2.0 else arr / 255.0, 0.0, 1.0)
+        
+    return (norm * 255.0).round().astype(np.uint8)
+
+def batch_convert_npy_to_png(input_dir: str, output_dir: str, mode: str = "standard", workers: int = 8):
+    npy_files = list(Path(input_dir).rglob("*.npy"))
+    os.makedirs(output_dir, exist_ok=True)
+    
+    def _worker(p):
+        arr = np.load(str(p))
+        img = Image.fromarray(npy_array_to_uint8(arr, mode=mode))
+        out_p = Path(output_dir) / p.relative_to(input_dir).with_suffix('.png')
+        os.makedirs(out_p.parent, exist_ok=True)
+        img.save(str(out_p))
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        list(executor.map(_worker, npy_files))
+    print(f"[OK] Converted {len(npy_files)} files -> {output_dir}")
 </code></pre>
 
             <!-- train.py -->

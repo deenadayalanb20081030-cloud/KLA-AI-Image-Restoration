@@ -12,41 +12,59 @@
 
 ## ⚡ Quick Start for Reviewers & Judges (Zero Setup)
 
-Run the automated evaluation benchmark immediately on any test set without manual code modifications:
+Run the automated evaluation benchmark immediately on any test set without manual code modifications (supports both `.png` images and raw float32 `.npy` arrays):
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<YOUR_USERNAME>/AI-Image-Restore.git
-cd AI-Image-Restore
+git clone https://github.com/<YOUR_USERNAME>/KLA-AI-Image-Restoration.git
+cd KLA-AI-Image-Restoration
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. (Optional) Generate sample test images
-python generate_synthetic_data.py
+# 3. Generate 1,000+ paired semiconductor samples across 8 fab modalities (.png + .npy)
+python generate_1000_dataset.py --count 1000
 
-# 4. Run automated evaluation benchmark
-python evaluate.py --input_dir ./sample_test_data/input --output_dir ./outputs
+# 4. Run automated evaluation benchmark on the 1,000 dataset
+python evaluate.py --input_dir ./sample_test_data/input_1000 --output_dir ./outputs_1000 --save_npy
 ```
 
-> **Evaluation Script Note**: `evaluate.py` automatically accepts all standard CLI flag aliases:  
-> `--input_dir <path>` or `--input <path>` or `-i <path>`  
-> `--output_dir <path>` or `--output <path>` or `-o <path>`
+> **Universal Input & Format Support**: `evaluate.py` accepts `.npy` (raw unclipped float arrays), `.png`, `.jpg`, `.tif`, and `.bmp`.
+> Standard CLI flag aliases supported:  
+> `--input_dir <path>` / `--input <path>` / `-i <path>`  
+> `--output_dir <path>` / `--output <path>` / `-o <path>`
+
+---
+
+## 🏭 Semiconductor Industry Modalities Covered (1,000+ Dataset)
+
+Our synthetic generation pipeline and restoration models cover **all 8 major semiconductor manufacturing domains**:
+
+1. **Logic FinFET / Gate-All-Around (GAA)**: TSMC / Intel 3nm/2nm metal interconnects and standard cell fins.
+2. **3D NAND Flash Memory**: High aspect-ratio vertical channel memory hole arrays & staircase wordlines.
+3. **DRAM Capacitor Trench & Bitlines**: High-density capacitor arrays & dense orthogonal bitlines.
+4. **Advanced Packaging TSVs**: Through-Silicon Vias and C4 microbump interconnects.
+5. **EUV Optical Overlay Targets**: ASML diffraction gratings and box-in-box overlay metrology.
+6. **CMP Surface Polishing**: Chemical Mechanical Planarization micro-scratches & slurry particles.
+7. **SEM Crystal Dendrite Defects**: Dislocation defect networks and dendrite crystal growth.
+8. **Out-of-Distribution (OOD) Outliers**: Multi-modal anisotropic material cross-sections.
 
 ---
 
 ## 📋 Mandatory Repository Components
 
-This repository contains all 6 required submission components:
+This repository contains all required submission components:
 
 | # | Required Component | File / Directory Path | Description |
 | :-: | :--- | :--- | :--- |
 | **1** | **README.md** | [`README.md`](README.md) | Complete self-contained setup and reproduction documentation. |
-| **2** | **Evaluation Script** | [`evaluate.py`](evaluate.py) | Standalone Python CLI script. Evaluates arbitrary input resolutions with multi-threaded async I/O. |
-| **3** | **Training Script** | [`train.py`](train.py) | Reproducible training pipeline with synthetic speckle transform and composite loss. |
-| **4** | **Trained Model Weights** | [`weights/best_model_weights.pt`](weights/) | Trained PyTorch model checkpoint ready for inference. |
-| **5** | **Restored Test Outputs** | [`outputs/`](outputs/) | Full-resolution ($256\times256$ and $512\times512$) 8-bit PNG images produced by the model. |
-| **6** | **Environment Spec** | [`requirements.txt`](requirements.txt) | Complete pip freeze specification for reproducible evaluation. |
+| **2** | **Evaluation Script** | [`evaluate.py`](evaluate.py) | Standalone Python CLI. Evaluates `.npy` and image inputs with multi-threaded async I/O. |
+| **3** | **Training Script** | [`train.py`](train.py) | Reproducible training pipeline with synthetic speckle transform and composite metrology loss. |
+| **4** | **High-Scale Generator** | [`generate_1000_dataset.py`](generate_1000_dataset.py) | Generates 1,000+ paired samples across 8 semiconductor fab categories (.png + .npy). |
+| **5** | **Trained Model Weights** | [`weights/best_model_weights.pt`](weights/) | Trained PyTorch model checkpoint ready for inference. |
+| **6** | **Restored Test Outputs** | [`outputs/`](outputs/) | 1,000+ full-resolution restored PNG images & raw float32 `.npy` arrays. |
+| **7** | **Interactive Web Studio** | [`index.html`](index.html), [`styles.css`](styles.css), [`app.js`](app.js) | Full semiconductor metrology web studio with live .NPY parser/exporter. |
+| **8** | **Environment Spec** | [`requirements.txt`](requirements.txt) | Complete pip freeze specification for reproducible evaluation. |
 
 ---
 
@@ -174,27 +192,73 @@ Simply open **[`index.html`](index.html)** in any modern web browser (no local s
 
 ---
 
+---
+
+## 🖼️ .NPY → .PNG Conversion & Visual Inspection Workflow
+
+Raw **`.npy` arrays** preserve pure 32-bit floating-point precision and unclipped laser speckle dynamic values ($>1.0$), making them the gold standard for quantitative metrology.
+
+However, **PNG images are essential for visual inspection**, enabling hackathon evaluators, process engineers, and defect review tools to rapidly audit restoration quality. We provide a **dedicated, standalone conversion module**: `convert_npy_to_png.py`.
+
+### 1. Standalone CLI Invocation
+
+```bash
+# A. Batch convert entire output directory of .npy files to .png
+python convert_npy_to_png.py --input_dir ./outputs --output_dir ./outputs_png
+
+# B. Convert a single wafer array
+python convert_npy_to_png.py --input_file ./outputs/sample_0001.npy --output_file ./sample_0001.png
+
+# C. High-Contrast Defect Review (1% - 99% Percentile Stretch)
+python convert_npy_to_png.py --input_dir ./outputs --output_dir ./outputs_contrast --mode percentile
+
+# D. False-Color Thermal / Metrology Heatmap (Inferno / Turbo / Viridis)
+python convert_npy_to_png.py --input_dir ./outputs --output_dir ./outputs_heatmap --colormap inferno
+```
+
+### 2. Python Module Integration in Custom Pipelines
+
+Evaluators and developers can seamlessly import the converter into automated evaluation scripts:
+
+```python
+from convert_npy_to_png import npy_to_png, batch_convert_npy_to_png, npy_array_to_uint8
+
+# Convert single array file to PIL image
+pil_img = npy_to_png("wafer_tile.npy", png_path="wafer_tile.png", mode="standard")
+
+# In-memory conversion of raw float32 array to 8-bit image for OpenCV / Matplotlib
+uint8_img = npy_array_to_uint8(raw_float_array, mode="percentile", colormap="turbo")
+
+# Batch convert folder with multi-threaded workers
+stats = batch_convert_npy_to_png(input_dir="./outputs", output_dir="./outputs_png", workers=8)
+print(f"Converted {stats['total']} files at {stats['fps']:.1f} FPS")
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```
 AI-Image-Restore/
-├── evaluate.py                  # [MANDATORY] Standalone CLI benchmark script
+├── evaluate.py                  # [MANDATORY] Standalone CLI benchmark script (.npy & image support)
 ├── train.py                     # [MANDATORY] PyTorch training & loss pipeline
 ├── model.py                     # [MANDATORY] NAFNetSR model architecture
+├── convert_npy_to_png.py        # Standalone .NPY -> .PNG conversion & visualization tool
+├── generate_1000_dataset.py     # 1,000+ paired multi-modal wafer synthesizer (.npy & .png)
+├── benchmark_10k_models.py      # 10,000-wafer multi-model comparative benchmark script
 ├── requirements.txt             # [MANDATORY] Pinned environment dependencies
 ├── weights/
 │   └── best_model_weights.pt    # [MANDATORY] Trained model weights checkpoint
-├── outputs/                     # [MANDATORY] Denoised restored test outputs
-│   ├── sample_dendrite_001_128x128.png
-│   ├── sample_texture_001_256x256.png
-│   └── ...
+├── outputs/                     # [MANDATORY] Restored test outputs (.png and raw .npy)
 ├── sample_test_data/
 │   ├── input/                   # Sample degraded test inputs (128x128 & 256x256)
-│   └── output/                  # Evaluated output benchmark images
-├── generate_synthetic_data.py   # Utility to create synthetic semiconductor samples
-├── index.html                   # Interactive Metrology Web Platform
+│   ├── input_1000/              # 1,000 paired degraded inputs across 8 fab modalities
+│   └── gt_1000/                 # 1,000 clean ground truth references
+├── NanoRestore_KLA_PS01.pdf     # Official 9-Slide Submission PDF for i4C Portal
+├── NanoRestore_KLA_PS01.pptx    # Official 9-Slide Submission PowerPoint
+├── index.html                   # Interactive Metrology Web Platform & .NPY Inspector
 ├── styles.css                   # Precision Semiconductor Dark Theme Design System
-├── app.js                       # Web Studio simulation & chart rendering engine
+├── app.js                       # Web Studio, pure JS .NPY binary parser & converter
 ├── .gitignore                   # Standard Python Git ignore rules
 └── README.md                    # Complete project documentation
 ```

@@ -87,7 +87,7 @@ if HAS_TORCH:
             self.downscale = downscale
             self.degrader = SemiconductorDegradationTransform(downscale=downscale)
 
-            exts = ('*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff', '*.bmp')
+            exts = ('*.npy', '*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff', '*.bmp')
             self.gt_paths = []
             for ext in exts:
                 self.gt_paths.extend(glob.glob(os.path.join(gt_dir, ext)))
@@ -95,24 +95,31 @@ if HAS_TORCH:
             self.gt_paths = sorted(list(set(self.gt_paths)))
 
             if len(self.gt_paths) == 0:
-                raise RuntimeError(f"No image files found in {gt_dir}")
+                raise RuntimeError(f"No image or .npy files found in {gt_dir}")
 
             print(f"[DATASET] Found {len(self.gt_paths)} ground truth samples in {gt_dir}")
 
         def __len__(self) -> int:
             return len(self.gt_paths)
 
+        def _load_sample(self, path: str) -> np.ndarray:
+            if path.endswith('.npy'):
+                arr = np.load(path).astype(np.float32)
+                if arr.ndim == 3:
+                    arr = arr[0] if arr.shape[0] == 1 else (0.2989 * arr[0] + 0.5870 * arr[1] + 0.1140 * arr[2])
+                return arr if arr.max() <= 1.5 else (arr / 255.0)
+            img = Image.open(path).convert('L')
+            return np.array(img, dtype=np.float32) / 255.0
+
         def __getitem__(self, idx: int) -> tuple:
             gt_path = self.gt_paths[idx]
-            gt_img = Image.open(gt_path).convert('L')
-            gt_np = np.array(gt_img, dtype=np.float32) / 255.0
+            gt_np = self._load_sample(gt_path)
 
             if self.lr_dir is not None:
                 filename = Path(gt_path).name
                 lr_path = os.path.join(self.lr_dir, filename)
                 if os.path.exists(lr_path):
-                    lr_img = Image.open(lr_path).convert('L')
-                    lr_np = np.array(lr_img, dtype=np.float32) / 255.0
+                    lr_np = self._load_sample(lr_path)
                 else:
                     lr_np, gt_np = self.degrader(gt_np)
             else:

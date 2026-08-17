@@ -191,24 +191,110 @@
           }
         }
       }
-    } else if (type === 'wafer-die') {
-      // Semiconductor Logic Contact Holes, Transistor Fins & Manhattan Routing Grid
+    } else if (type === 'logic-finfet' || type === 'wafer-die') {
+      // Logic FinFET / GAA 3nm standard cell fins & gate tracks
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const idx = y * width + x;
-          let val = 0.15; // Silicon substrate
-
-          // Interconnect metal tracks (horizontal & vertical lines)
-          if ((x % 32 < 12) || (y % 64 < 16)) val = 0.55;
-          // Contact vias / Logic holes (regular grid array)
-          const viaX = x % 32 - 6;
-          const viaY = y % 64 - 8;
-          if (Math.hypot(viaX, viaY) < 5) val = 0.95;
-
-          // Gate poly lines
-          if (x % 16 < 4 && y % 32 < 24) val = 0.75;
-
+          let val = 0.15;
+          if (y % 16 < 6) val = 0.75; // Fin channels
+          if (x % 32 < 10) val = 0.90; // Gate electrodes
+          const vx = (x % 32) - 16;
+          const vy = (y % 32) - 8;
+          if (Math.hypot(vx, vy) < 3.5) val = 0.98; // Contact vias
           buffer[idx] = val;
+        }
+      }
+    } else if (type === 'nand-3d') {
+      // 3D NAND Flash vertical channel memory holes
+      buffer.fill(0.20);
+      const r = 6;
+      const spacingX = 24, spacingY = 20;
+      for (let row = 0, y = spacingY; y < height - spacingY; y += spacingY, row++) {
+        const offsetX = (row % 2 === 1) ? 12 : 0;
+        for (let x = spacingX + offsetX; x < width - spacingX; x += spacingX) {
+          for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+              if (dx*dx + dy*dy <= r*r) {
+                const py = y + dy, px = x + dx;
+                if (py >= 0 && py < height && px >= 0 && px < width) {
+                  buffer[py * width + px] = 0.85;
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (type === 'dram-trench') {
+      // DRAM capacitor trench arrays & orthogonal bitlines
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          let val = 0.18;
+          if (y % 12 < 4) val = 0.70;
+          if (x % 20 < 6) val = 0.82;
+          buffer[idx] = val;
+        }
+      }
+    } else if (type === 'tsv-packaging') {
+      // Advanced Packaging Through-Silicon Vias & C4 Microbumps
+      buffer.fill(0.10);
+      const r = 24;
+      for (let y = 48; y < height; y += 64) {
+        for (let x = 48; x < width; x += 64) {
+          for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+              const dist = Math.hypot(dx, dy);
+              if (dist <= r) {
+                const py = y + dy, px = x + dx;
+                if (py >= 0 && py < height && px >= 0 && px < width) {
+                  buffer[py * width + px] = 0.95 - (dist / r) * 0.45;
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (type === 'euv-grating') {
+      // EUV Optical Overlay & Diffraction Grating Metrology Targets
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          const grating = Math.sin(x * 2 * Math.PI / 20.0);
+          let val = grating > 0 ? 0.88 : 0.22;
+          if ((y >= 100 && y <= 110 && x >= 100 && x <= 412) ||
+              (y >= 402 && y <= 412 && x >= 100 && x <= 412) ||
+              (x >= 100 && x <= 110 && y >= 100 && y <= 412) ||
+              (x >= 402 && x <= 412 && y >= 100 && y <= 412)) {
+            val = 0.95;
+          }
+          buffer[idx] = val;
+        }
+      }
+    } else if (type === 'cmp-scratch') {
+      // Chemical Mechanical Planarization micro-scratches & particulate defects
+      buffer.fill(0.50);
+      for (let i = 0; i < 10; i++) {
+        const slope = (Math.sin(i * 1.5) * 0.5);
+        const intercept = 30 + (i * 45);
+        for (let x = 0; x < width; x++) {
+          const y = Math.round(slope * x + intercept);
+          if (y >= 1 && y < height - 1) {
+            const v = (i % 2 === 0) ? 0.15 : 0.92;
+            buffer[y * width + x] = v;
+            buffer[(y - 1) * width + x] = v;
+          }
+        }
+      }
+      for (let i = 0; i < 25; i++) {
+        const px = Math.floor(Math.sin(i * 37.1) * 200 + 256);
+        const py = Math.floor(Math.cos(i * 49.3) * 200 + 256);
+        if (px >= 2 && px < width - 2 && py >= 2 && py < height - 2) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              buffer[(py + dy) * width + (px + dx)] = 0.98;
+            }
+          }
         }
       }
     } else if (type === 'ood-sample') {
@@ -980,9 +1066,99 @@
       });
     });
 
-    // --- Custom File Upload & Dropzone ---
+    // --- Binary .NPY Parser in JavaScript ---
+    function parseNpyBuffer(arrayBuffer) {
+      const view = new DataView(arrayBuffer);
+      const magic = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3), view.getUint8(4), view.getUint8(5));
+      if (magic !== '\x93NUMPY') {
+        throw new Error('Invalid .npy file format (missing NumPy binary header)');
+      }
+      const major = view.getUint8(6);
+      let headerLen = 0;
+      let headerOffset = 10;
+      if (major === 1) {
+        headerLen = view.getUint16(8, true);
+      } else {
+        headerLen = view.getUint32(8, true);
+        headerOffset = 12;
+      }
+      const headerBytes = new Uint8Array(arrayBuffer, headerOffset, headerLen);
+      const headerStr = new TextDecoder().decode(headerBytes);
+      
+      const descrMatch = headerStr.match(/'descr':\s*'([^']+)'/);
+      const shapeMatch = headerStr.match(/'shape':\s*\(([^)]+)\)/);
+      const descr = descrMatch ? descrMatch[1] : '<f4';
+      const shapeParts = shapeMatch ? shapeMatch[1].split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [512, 512];
+      
+      let h = shapeParts[0] || 512;
+      let w = shapeParts[1] || shapeParts[0] || 512;
+      const totalPixels = h * w;
+      const dataOffset = headerOffset + headerLen;
+      
+      let floatArr = new Float32Array(totalPixels);
+      if (descr.includes('f4') || descr.includes('float32')) {
+        const rawF32 = new Float32Array(arrayBuffer, dataOffset, totalPixels);
+        floatArr.set(rawF32);
+      } else if (descr.includes('f8') || descr.includes('float64')) {
+        const f64 = new Float64Array(arrayBuffer, dataOffset, totalPixels);
+        for (let i = 0; i < totalPixels; i++) floatArr[i] = f64[i];
+      } else if (descr.includes('u1') || descr.includes('uint8')) {
+        const u8 = new Uint8Array(arrayBuffer, dataOffset, totalPixels);
+        for (let i = 0; i < totalPixels; i++) floatArr[i] = u8[i] / 255.0;
+      }
+      return { data: floatArr, width: w, height: h };
+    }
+
+    // --- Binary .NPY Exporter in JavaScript ---
+    function exportNpyArray(floatArr, width, height, filename) {
+      const dictStr = `{'descr': '<f4', 'fortran_order': False, 'shape': (${height}, ${width}), }`;
+      let headerLen = dictStr.length + 1;
+      const padLen = (64 - ((10 + headerLen) % 64)) % 64;
+      const paddedDict = dictStr + ' '.repeat(padLen) + '\n';
+      headerLen = paddedDict.length;
+
+      const headerBuf = new Uint8Array(10 + headerLen);
+      headerBuf.set([0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59, 1, 0], 0);
+      headerBuf[8] = headerLen & 0xff;
+      headerBuf[9] = (headerLen >> 8) & 0xff;
+      for (let i = 0; i < headerLen; i++) {
+        headerBuf[10 + i] = paddedDict.charCodeAt(i);
+      }
+
+      const dataBuf = new Uint8Array(floatArr.buffer, floatArr.byteOffset, floatArr.byteLength);
+      const blob = new Blob([headerBuf, dataBuf], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'restored_wafer_array.npy';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // --- Custom File Upload & Dropzone (.NPY + Images) ---
     function handleFile(file) {
-      if (!file || !file.type.startsWith('image/')) return;
+      if (!file) return;
+
+      if (file.name.endsWith('.npy')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = parseNpyBuffer(event.target.result);
+            state.gtBuffer = parsed.data;
+            state.activeSample = 'custom-npy';
+            document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('active'));
+            updateApp();
+          } catch (err) {
+            alert('Error loading .npy file: ' + err.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) return;
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -999,7 +1175,6 @@
             const r = imgData[i * 4];
             const g = imgData[i * 4 + 1];
             const b = imgData[i * 4 + 2];
-            // Convert RGB to Grayscale [0, 1]
             customBuffer[i] = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
           }
 
@@ -1123,13 +1298,21 @@
       });
     });
 
-    // --- Export Restored Image ---
+    // --- Export Restored Image (PNG) ---
     document.getElementById('downloadRestoredBtn').addEventListener('click', () => {
       const link = document.createElement('a');
       link.download = `restored_${state.activeSample}_${state.activeModel}.png`;
       link.href = elements.canvasRestored.toDataURL('image/png');
       link.click();
     });
+
+    // --- Export Restored Raw Float32 Array (.NPY) ---
+    const npyBtn = document.getElementById('downloadRestoredNpyBtn');
+    if (npyBtn) {
+      npyBtn.addEventListener('click', () => {
+        exportNpyArray(state.restoredBuffer, state.hrWidth, state.hrHeight, `restored_${state.activeSample}_${state.activeModel}.npy`);
+      });
+    }
 
     // --- Loss Function Workshop Sliders ---
     function updateLossFormula() {
@@ -1157,6 +1340,7 @@
     // --- Code Generator Tabs & Copy ---
     const fileNames = {
       evaluate: 'evaluate.py',
+      converter: 'convert_npy_to_png.py',
       train: 'train.py',
       model: 'model.py',
       requirements: 'requirements.txt'
@@ -1216,6 +1400,160 @@
         });
       });
     });
+
+    // ==========================================================================
+    // NPY ⇄ PNG Converter Studio Event Listeners
+    // ==========================================================================
+    const convModBtns = document.querySelectorAll('.conv-mod-btn');
+    const convModeBtns = document.querySelectorAll('#convModeGroup .conv-opt-btn');
+    const convCmapBtns = document.querySelectorAll('#convCmapGroup .conv-opt-btn');
+    const convDownloadBtn = document.getElementById('convDownloadPngBtn');
+    const convDownloadAllBtn = document.getElementById('convDownloadAllZipBtn');
+    const convDropzone = document.getElementById('convDropzone');
+    const convFileInput = document.getElementById('convFileInput');
+
+    convModBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        convModBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        convState.activeMod = btn.dataset.mod;
+        convState.title = modalityNames[btn.dataset.mod] || 'Semiconductor Wafer Array';
+        convState.filename = `sample_${btn.dataset.mod}_array.npy`;
+        convState.buffer = null; // Re-synthesize
+        updateConvStudio();
+      });
+    });
+
+    convModeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        convModeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        convState.mode = btn.dataset.mode;
+        updateConvStudio();
+      });
+    });
+
+    convCmapBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        convCmapBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        convState.colormap = btn.dataset.cmap;
+        updateConvStudio();
+      });
+    });
+
+    if (convDownloadBtn) {
+      convDownloadBtn.addEventListener('click', () => {
+        const canvas = document.getElementById('convCanvas');
+        if (!canvas) return;
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `wafer_${convState.activeMod}_${convState.mode}_${convState.colormap}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
+
+    if (convDownloadAllBtn) {
+      convDownloadAllBtn.addEventListener('click', () => {
+        const mods = ['finfet', 'nand', 'dram', 'tsv', 'euv', 'cmp', 'dendrite', 'ood'];
+        let delay = 0;
+        mods.forEach(mod => {
+          setTimeout(() => {
+            let buf = null;
+            if (mod === 'finfet') buf = generateLogicFinFETPattern(512, 512);
+            else if (mod === 'nand') buf = generate3DNANDPattern(512, 512);
+            else if (mod === 'dram') buf = generateDRAMPattern(512, 512);
+            else if (mod === 'tsv') buf = generateTSVPackagingPattern(512, 512);
+            else if (mod === 'euv') buf = generateEUVGratingPattern(512, 512);
+            else if (mod === 'cmp') buf = generateCMPScratchPattern(512, 512);
+            else if (mod === 'dendrite') buf = generateDendritePattern(512, 512);
+            else buf = generateOODPattern(512, 512);
+
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 512;
+            offCanvas.height = 512;
+            renderBufferToCanvas(buf, 512, 512, offCanvas, false);
+
+            const a = document.createElement('a');
+            a.href = offCanvas.toDataURL('image/png');
+            a.download = `semiconductor_${mod}_512x512.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }, delay);
+          delay += 250;
+        });
+      });
+    }
+
+    if (convDropzone && convFileInput) {
+      convDropzone.addEventListener('click', () => convFileInput.click());
+      convFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleConvFile(e.target.files[0]);
+      });
+      convDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        convDropzone.classList.add('dragover');
+      });
+      convDropzone.addEventListener('dragleave', () => {
+        convDropzone.classList.remove('dragover');
+      });
+      convDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        convDropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleConvFile(e.dataTransfer.files[0]);
+      });
+    }
+
+    function handleConvFile(file) {
+      if (!file) return;
+      if (file.name.endsWith('.npy')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = parseNpyBuffer(event.target.result);
+            convState.buffer = parsed.data;
+            convState.width = parsed.width;
+            convState.height = parsed.height;
+            convState.title = `Custom Upload: ${file.name}`;
+            convState.filename = file.name;
+            convModBtns.forEach(b => b.classList.remove('active'));
+            updateConvStudio();
+          } catch (err) {
+            alert('Error loading .npy file: ' + err.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 512;
+            offCanvas.height = 512;
+            const offCtx = offCanvas.getContext('2d');
+            offCtx.drawImage(img, 0, 0, 512, 512);
+            const imgData = offCtx.getImageData(0, 0, 512, 512).data;
+            const customBuffer = new Float32Array(512 * 512);
+            for (let i = 0; i < 512 * 512; i++) {
+              customBuffer[i] = (0.299 * imgData[i*4] + 0.587 * imgData[i*4+1] + 0.114 * imgData[i*4+2]) / 255.0;
+            }
+            convState.buffer = customBuffer;
+            convState.width = 512;
+            convState.height = 512;
+            convState.title = `Image File: ${file.name}`;
+            convModBtns.forEach(b => b.classList.remove('active'));
+            updateConvStudio();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
 
     // --- Pareto Chart Hover Tooltip ---
     elements.paretoCanvas.addEventListener('mousemove', (e) => {
@@ -1278,13 +1616,178 @@
   }
 
   // ==========================================================================
+  // NPY ⇄ PNG Converter Studio Engine Implementation
+  // ==========================================================================
+  const convState = {
+    activeMod: 'finfet',
+    buffer: null,
+    width: 512,
+    height: 512,
+    mode: 'standard',
+    colormap: 'grayscale',
+    title: 'Logic FinFET (3nm Standard Cells)',
+    filename: 'sample_logic_finfet.npy'
+  };
+
+  const modalityNames = {
+    finfet: 'Logic FinFET (3nm Standard Cells)',
+    nand: '3D NAND Flash Memory (Vertical Channels)',
+    dram: 'DRAM Capacitor Trench & Bitlines',
+    tsv: 'Advanced Packaging TSVs & C4 Microbumps',
+    euv: 'EUV Optical Diffraction Gratings',
+    cmp: 'CMP Surface Polishing & Scratches',
+    dendrite: 'SEM Crystal Dendrite Defect Network',
+    ood: 'Out-of-Distribution Multi-Material Wafer'
+  };
+
+  function updateConvStudio() {
+    const canvas = document.getElementById('convCanvas');
+    if (!canvas) return;
+
+    if (!convState.buffer) {
+      if (convState.activeMod === 'finfet') {
+        convState.buffer = generateLogicFinFETPattern(512, 512);
+      } else if (convState.activeMod === 'nand') {
+        convState.buffer = generate3DNANDPattern(512, 512);
+      } else if (convState.activeMod === 'dram') {
+        convState.buffer = generateDRAMPattern(512, 512);
+      } else if (convState.activeMod === 'tsv') {
+        convState.buffer = generateTSVPackagingPattern(512, 512);
+      } else if (convState.activeMod === 'euv') {
+        convState.buffer = generateEUVGratingPattern(512, 512);
+      } else if (convState.activeMod === 'cmp') {
+        convState.buffer = generateCMPScratchPattern(512, 512);
+      } else if (convState.activeMod === 'dendrite') {
+        convState.buffer = generateDendritePattern(512, 512);
+      } else {
+        convState.buffer = generateOODPattern(512, 512);
+      }
+    }
+
+    const total = convState.width * convState.height;
+    let minVal = Infinity;
+    let maxVal = -Infinity;
+    let sumVal = 0;
+
+    for (let i = 0; i < total; i++) {
+      const v = convState.buffer[i];
+      if (v < minVal) minVal = v;
+      if (v > maxVal) maxVal = v;
+      sumVal += v;
+    }
+    const meanVal = sumVal / total;
+
+    // Normalization / Tone mapping
+    let normBuffer = new Float32Array(total);
+    if (convState.mode === 'percentile') {
+      const sampleSize = Math.min(10000, total);
+      const sample = new Float32Array(sampleSize);
+      const step = Math.floor(total / sampleSize);
+      for (let i = 0; i < sampleSize; i++) sample[i] = convState.buffer[i * step];
+      sample.sort();
+      const pLow = sample[Math.floor(sampleSize * 0.01)];
+      const pHigh = sample[Math.floor(sampleSize * 0.99)];
+      const range = Math.max(pHigh - pLow, 1e-6);
+      for (let i = 0; i < total; i++) {
+        normBuffer[i] = Math.min(1.0, Math.max(0.0, (convState.buffer[i] - pLow) / range));
+      }
+    } else if (convState.mode === 'minmax') {
+      const range = Math.max(maxVal - minVal, 1e-6);
+      for (let i = 0; i < total; i++) {
+        normBuffer[i] = Math.min(1.0, Math.max(0.0, (convState.buffer[i] - minVal) / range));
+      }
+    } else {
+      // standard: physical [0, 1] clamping
+      for (let i = 0; i < total; i++) {
+        normBuffer[i] = Math.min(1.0, Math.max(0.0, convState.buffer[i]));
+      }
+    }
+
+    // Render with colormap to canvas
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(convState.width, convState.height);
+    const data = imgData.data;
+
+    for (let i = 0; i < total; i++) {
+      const t = normBuffer[i]; // [0.0, 1.0]
+      const dIdx = i * 4;
+
+      if (convState.colormap === 'inferno') {
+        if (t < 0.25) {
+          const u = t / 0.25;
+          data[dIdx] = Math.round(u * 80);
+          data[dIdx + 1] = 0;
+          data[dIdx + 2] = Math.round(u * 120);
+        } else if (t < 0.5) {
+          const u = (t - 0.25) / 0.25;
+          data[dIdx] = Math.round(80 + u * 120);
+          data[dIdx + 1] = Math.round(u * 60);
+          data[dIdx + 2] = Math.round(120 - u * 60);
+        } else if (t < 0.75) {
+          const u = (t - 0.5) / 0.25;
+          data[dIdx] = Math.round(200 + u * 50);
+          data[dIdx + 1] = Math.round(60 + u * 130);
+          data[dIdx + 2] = 0;
+        } else {
+          const u = (t - 0.75) / 0.25;
+          data[dIdx] = 250;
+          data[dIdx + 1] = Math.round(190 + u * 65);
+          data[dIdx + 2] = Math.round(u * 200);
+        }
+      } else if (convState.colormap === 'turbo') {
+        const r = Math.sin(t * Math.PI * 1.5 - 0.5) * 127 + 128;
+        const g = Math.sin(t * Math.PI * 1.5 - 1.5) * 127 + 128;
+        const b = Math.sin(t * Math.PI * 1.5 - 2.5) * 127 + 128;
+        data[dIdx] = Math.min(255, Math.max(0, Math.round(r)));
+        data[dIdx + 1] = Math.min(255, Math.max(0, Math.round(g)));
+        data[dIdx + 2] = Math.min(255, Math.max(0, Math.round(b)));
+      } else if (convState.colormap === 'viridis') {
+        data[dIdx] = Math.round(68 + t * (253 - 68));
+        data[dIdx + 1] = Math.round(1 + t * (231 - 1));
+        data[dIdx + 2] = Math.round(84 + (1 - t) * (150));
+      } else {
+        const val = Math.round(t * 255);
+        data[dIdx] = val;
+        data[dIdx + 1] = val;
+        data[dIdx + 2] = val;
+      }
+      data[dIdx + 3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Update Telemetry Elements
+    const titleEl = document.getElementById('convArrayTitle');
+    const subEl = document.getElementById('convArraySubtitle');
+    const dimEl = document.getElementById('ctlDim');
+    const dtypeEl = document.getElementById('ctlDtype');
+    const rangeEl = document.getElementById('ctlRange');
+    const speckleEl = document.getElementById('ctlSpeckle');
+
+    if (titleEl) titleEl.textContent = convState.title;
+    if (subEl) subEl.textContent = `Rendered from 32-bit Floating-Point Array (.npy) → 8-bit PNG Image (${convState.mode.toUpperCase()} mode, ${convState.colormap.toUpperCase()} colormap)`;
+    if (dimEl) dimEl.textContent = `${convState.width} × ${convState.height}`;
+    if (dtypeEl) dtypeEl.textContent = 'Float32 (IEEE-754 Single Precision)';
+    if (rangeEl) rangeEl.textContent = `[${minVal.toFixed(3)}, ${maxVal.toFixed(3)}] (Mean: ${meanVal.toFixed(3)})`;
+    if (speckleEl) {
+      if (maxVal > 1.0) {
+        speckleEl.textContent = `Unclipped Speckle (${maxVal.toFixed(3)} > 1.0)`;
+        speckleEl.className = 'ctl-val ctl-highlight';
+      } else {
+        speckleEl.textContent = 'Nominal [0.0, 1.0] Range';
+        speckleEl.className = 'ctl-val';
+      }
+    }
+  }
+
+  // ==========================================================================
   // 8. Initialization Entrypoint
   // ==========================================================================
 
   function init() {
     setupEvents();
     updateApp();
-    console.log('[KLA Metrology Platform] Initialized successfully with Fab Throughput & LER Metrology metrics.');
+    updateConvStudio();
+    console.log('[KLA Metrology Platform] Initialized successfully with Fab Throughput & NPY ⇄ PNG Conversion Suite.');
   }
 
   if (document.readyState === 'loading') {
