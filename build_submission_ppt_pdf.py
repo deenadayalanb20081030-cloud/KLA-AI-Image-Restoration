@@ -393,12 +393,12 @@ def create_pptx():
         "\nRepository URL:\n"
         "https://github.com/deenadayalanb20081030-cloud/KLA-AI-Image-Restoration\n\n"
         "Includes All Mandatory Submission Components:\n"
-        "✓ README.md (Comprehensive setup & 1-line execution)\n"
-        "✓ evaluate.py (Standalone CLI benchmark accepting .npy & images)\n"
-        "✓ train.py (Reproducible supervised training script)\n"
-        "✓ weights/best_model_weights.pt (Final trained PyTorch model)\n"
-        "✓ outputs/ (1,000+ restored full-res PNGs & raw .npy arrays)\n"
-        "✓ requirements.txt (Pinned dependencies)"
+        "✓ run.py (Official Entrypoint: python run.py <input-dir> <output-dir>)\n"
+        "✓ README.md (Comprehensive setup & 1-line reproduction guide)\n"
+        "✓ models/best_model_weights.pt (Trained PyTorch model in models/)\n"
+        "✓ requirements.txt (Pinned dependencies with versions)\n"
+        "✓ outputs/ (1,000+ restored full-res .npy arrays & PNGs)\n"
+        "✓ convert_npy_to_png.py (Standalone .NPY visualizer for evaluators)"
     )
     p_gt = tf_gh.add_paragraph()
     p_gt.text = gh_text
@@ -793,12 +793,12 @@ def create_pdf():
         "Repository URL:\n"
         "https://github.com/deenadayalanb20081030-cloud/KLA-AI-Image-Restoration\n\n"
         "Includes All Mandatory Submission Components:\n"
-        "[OK] README.md (Comprehensive setup & 1-line execution)\n"
-        "[OK] evaluate.py (Standalone CLI benchmark accepting .npy & images)\n"
-        "[OK] train.py (Reproducible supervised training script)\n"
-        "[OK] weights/best_model_weights.pt (Final trained PyTorch model)\n"
-        "[OK] outputs/ (1,000+ restored full-res PNGs & raw .npy arrays)\n"
-        "[OK] requirements.txt (Pinned dependencies)"
+        "[OK] run.py (Official Entrypoint: python run.py <input-dir> <output-dir>)\n"
+        "[OK] README.md (Comprehensive setup & 1-line reproduction guide)\n"
+        "[OK] models/best_model_weights.pt (Trained PyTorch model in models/)\n"
+        "[OK] requirements.txt (Pinned dependencies with versions)\n"
+        "[OK] outputs/ (1,000+ restored full-res .npy arrays & PNGs)\n"
+        "[OK] convert_npy_to_png.py (Standalone .NPY visualizer for evaluators)"
     )
     pdf.set_xy(20, 48)
     pdf.set_text_color(248, 250, 252)

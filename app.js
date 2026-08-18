@@ -1339,6 +1339,7 @@
 
     // --- Code Generator Tabs & Copy ---
     const fileNames = {
+      run: 'run.py',
       evaluate: 'evaluate.py',
       converter: 'convert_npy_to_png.py',
       train: 'train.py',
@@ -1346,7 +1347,7 @@
       requirements: 'requirements.txt'
     };
 
-    let activeTabId = 'evaluate';
+    let activeTabId = 'run';
 
     elements.codeTabs.forEach(tab => {
       tab.addEventListener('click', () => {

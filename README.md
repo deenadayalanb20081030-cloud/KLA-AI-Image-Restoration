@@ -10,9 +10,9 @@
 
 ---
 
-## ⚡ Quick Start for Reviewers & Judges (Zero Setup)
+## ⚡ Quick Start for Evaluators & Judges (Official Entrypoint)
 
-Run the automated evaluation benchmark immediately on any test set without manual code modifications (supports both `.png` images and raw float32 `.npy` arrays):
+Run the official automated evaluation pipeline using the required syntax:
 
 ```bash
 # 1. Clone the repository
@@ -22,49 +22,54 @@ cd KLA-AI-Image-Restoration
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Generate 1,000+ paired semiconductor samples across 8 fab modalities (.png + .npy)
-python generate_1000_dataset.py --count 1000
-
-# 4. Run automated evaluation benchmark on the 1,000 dataset
-python evaluate.py --input_dir ./sample_test_data/input_1000 --output_dir ./outputs_1000 --save_npy
+# 3. Run official evaluation pipeline (positional or flagged syntax)
+python run.py <input-dir> <output-dir>
 ```
 
-> **Universal Input & Format Support**: `evaluate.py` accepts `.npy` (raw unclipped float arrays), `.png`, `.jpg`, `.tif`, and `.bmp`.
-> Standard CLI flag aliases supported:  
-> `--input_dir <path>` / `--input <path>` / `-i <path>`  
-> `--output_dir <path>` / `--output <path>` / `-o <path>`
+### Example 1-Line Test Execution:
+```bash
+# Generate 1,000 paired semiconductor samples (.npy + .png)
+python generate_1000_dataset.py --count 1000
+
+# Execute official run.py on input directory
+python run.py ./sample_test_data/input_1000 ./outputs
+```
+
+> **100% Submission Compliance Guarantee**:
+> - ✅ `run.py` reads all `.npy` files from `<input-dir>`.
+> - ✅ Creates `<output-dir>` automatically if it does not exist.
+> - ✅ Generates one restored `.npy` file for every input file with identical filename.
+> - ✅ Outputs are 2D grayscale float32 arrays with shape `(H, W)`.
+> - ✅ Output values are strictly within `[0.0, 1.0]` with **zero NaN or Inf** values.
+> - ✅ Restores $2\times$ target super-resolution ($128\times128 \to 256\times256$, $256\times256 \to 512\times512$).
+> - ✅ Self-contained in `models/` (requires no internet access, API keys, or manual config).
 
 ---
 
-## 🏭 Semiconductor Industry Modalities Covered (1,000+ Dataset)
+## 📁 Required Submission Structure
 
-Our synthetic generation pipeline and restoration models cover **all 8 major semiconductor manufacturing domains**:
-
-1. **Logic FinFET / Gate-All-Around (GAA)**: TSMC / Intel 3nm/2nm metal interconnects and standard cell fins.
-2. **3D NAND Flash Memory**: High aspect-ratio vertical channel memory hole arrays & staircase wordlines.
-3. **DRAM Capacitor Trench & Bitlines**: High-density capacitor arrays & dense orthogonal bitlines.
-4. **Advanced Packaging TSVs**: Through-Silicon Vias and C4 microbump interconnects.
-5. **EUV Optical Overlay Targets**: ASML diffraction gratings and box-in-box overlay metrology.
-6. **CMP Surface Polishing**: Chemical Mechanical Planarization micro-scratches & slurry particles.
-7. **SEM Crystal Dendrite Defects**: Dislocation defect networks and dendrite crystal growth.
-8. **Out-of-Distribution (OOD) Outliers**: Multi-modal anisotropic material cross-sections.
-
----
-
-## 📋 Mandatory Repository Components
-
-This repository contains all required submission components:
-
-| # | Required Component | File / Directory Path | Description |
-| :-: | :--- | :--- | :--- |
-| **1** | **README.md** | [`README.md`](README.md) | Complete self-contained setup and reproduction documentation. |
-| **2** | **Evaluation Script** | [`evaluate.py`](evaluate.py) | Standalone Python CLI. Evaluates `.npy` and image inputs with multi-threaded async I/O. |
-| **3** | **Training Script** | [`train.py`](train.py) | Reproducible training pipeline with synthetic speckle transform and composite metrology loss. |
-| **4** | **High-Scale Generator** | [`generate_1000_dataset.py`](generate_1000_dataset.py) | Generates 1,000+ paired samples across 8 semiconductor fab categories (.png + .npy). |
-| **5** | **Trained Model Weights** | [`weights/best_model_weights.pt`](weights/) | Trained PyTorch model checkpoint ready for inference. |
-| **6** | **Restored Test Outputs** | [`outputs/`](outputs/) | 1,000+ full-resolution restored PNG images & raw float32 `.npy` arrays. |
-| **7** | **Interactive Web Studio** | [`index.html`](index.html), [`styles.css`](styles.css), [`app.js`](app.js) | Full semiconductor metrology web studio with live .NPY parser/exporter. |
-| **8** | **Environment Spec** | [`requirements.txt`](requirements.txt) | Complete pip freeze specification for reproducible evaluation. |
+```
+team_name/
+├── run.py                       # [MANDATORY] Official evaluation entrypoint: python run.py <input-dir> <output-dir>
+├── requirements.txt             # [MANDATORY] Complete pinned dependencies with versions
+├── README.md                    # [MANDATORY] Setup and execution instructions
+├── models/                      # [MANDATORY] Model architecture & trained weights
+│   ├── best_model_weights.pt    # Final trained checkpoint
+│   └── model.py                 # NAFNetSR model definition
+├── convert_npy_to_png.py        # Standalone .NPY -> .PNG visualizer for evaluators
+├── evaluate.py                  # Multi-format CLI benchmark script
+├── generate_1000_dataset.py     # 1,000+ paired multi-modal wafer synthesizer (.npy + .png)
+├── benchmark_10k_models.py      # 10,000-wafer multi-model comparative benchmark script
+├── outputs/                     # 1,000+ restored full-res .npy arrays & PNGs
+├── sample_test_data/
+│   ├── input_1000/              # 1,000 degraded wafer inputs across 8 fab modalities
+│   └── gt_1000/                 # 1,000 clean ground truth references
+├── NanoRestore_KLA_PS01.pdf     # Official 9-Slide Submission PDF for i4C Portal
+├── NanoRestore_KLA_PS01.pptx    # Official 9-Slide Submission PowerPoint
+├── index.html                   # Interactive Metrology Web Platform & .NPY Inspector
+├── styles.css                   # Precision Semiconductor Dark Theme Design System
+└── app.js                       # Web Studio & pure JS .NPY binary parser
+```
 
 ---
 
